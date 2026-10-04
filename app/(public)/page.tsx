@@ -18,6 +18,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const [activeCatId, setActiveCatId] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -94,33 +96,50 @@ export default function HomePage() {
       </section>
 
       <section className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-3xl md:text-4xl font-black text-center text-gray-800 mb-12">Our Meal Categories</h2>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-black text-gray-800 mb-2">Our Meal Categories</h2>
+          <p className="text-xs text-orange-500 md:hidden font-bold uppercase tracking-wider">Tap any category to view items</p>
+        </div>
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-            {categories.map((cat) => (
-              <div key={cat.id} className={`group relative h-72 rounded-[2.5rem] border-2 p-6 text-center cursor-pointer transition-all duration-500 overflow-hidden ${cat.bg_color || 'bg-white'} ${cat.border_color || 'border-orange-200'} ${cat.shadow_style || 'shadow-sm'} hover:-translate-y-2`}>
-                <div className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 group-hover:-translate-y-full opacity-100 group-hover:opacity-0 p-4">
-                  <div className="text-6xl mb-4 filter drop-shadow-md transform group-hover:scale-110 transition-transform">{cat.emoji}</div>
-                  <h3 className={`font-black text-lg leading-tight ${cat.text_accent || 'text-gray-800'}`}>{cat.name}</h3>
-                  <div className={`mt-2 w-8 h-1 rounded-full opacity-30 ${(cat.text_accent || 'text-gray-800').replace('text', 'bg')}`}></div>
-                </div>
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm transition-all duration-500 translate-y-full group-hover:translate-y-0 opacity-0 group-hover:opacity-100 p-4">
-                  <h4 className={`font-black mb-3 text-xs uppercase tracking-wider ${cat.text_accent || 'text-gray-800'}`}>{cat.name}</h4>
-                  <div className="w-full h-full overflow-y-auto no-scrollbar">
-                    <ul className="space-y-1.5 text-[10px] md:text-xs text-gray-700 font-bold text-left">
-                      {cat.items?.map((v, i) => (
-                        <li key={i} className="bg-white px-2 py-1.5 rounded-lg shadow-sm border border-gray-100 w-full truncate hover:bg-black hover:text-white transition-colors">{v.item_name}</li>
-                      ))}
-                      {(!cat.items || cat.items.length === 0) && <li className="text-center text-gray-400 italic">Coming soon...</li>}
-                    </ul>
+            {categories.map((cat) => {
+              const isOpen = activeCatId === cat.id;
+              return (
+                <div
+                  key={cat.id}
+                  onClick={() => setActiveCatId(prev => prev === cat.id ? null : cat.id)}
+                  className={`group relative h-72 rounded-[2.5rem] border-2 p-6 text-center cursor-pointer transition-all duration-500 overflow-hidden select-none ${cat.bg_color || 'bg-white'} ${cat.border_color || 'border-orange-200'} ${cat.shadow_style || 'shadow-sm'} hover:-translate-y-2 active:scale-95`}
+                >
+                  {/* Front View */}
+                  <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 p-4 ${
+                    isOpen ? '-translate-y-full opacity-0 pointer-events-none' : 'opacity-100 group-hover:-translate-y-full group-hover:opacity-0'
+                  }`}>
+                    <div className="text-6xl mb-4 filter drop-shadow-md transform group-hover:scale-110 transition-transform">{cat.emoji}</div>
+                    <h3 className={`font-black text-lg leading-tight ${cat.text_accent || 'text-gray-800'}`}>{cat.name}</h3>
+                    <div className={`mt-2 w-8 h-1 rounded-full opacity-30 ${(cat.text_accent || 'text-gray-800').replace('text', 'bg')}`}></div>
+                  </div>
+
+                  {/* Back View (Items List) */}
+                  <div className={`absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm transition-all duration-500 p-4 ${
+                    isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100'
+                  }`}>
+                    <h4 className={`font-black mb-3 text-xs uppercase tracking-wider ${cat.text_accent || 'text-gray-800'}`}>{cat.name}</h4>
+                    <div className="w-full h-full overflow-y-auto no-scrollbar">
+                      <ul className="space-y-1.5 text-[10px] md:text-xs text-gray-700 font-bold text-left">
+                        {cat.items?.map((v, i) => (
+                          <li key={i} className="bg-white px-2 py-1.5 rounded-lg shadow-sm border border-gray-100 w-full truncate hover:bg-black hover:text-white transition-colors">{v.item_name}</li>
+                        ))}
+                        {(!cat.items || cat.items.length === 0) && <li className="text-center text-gray-400 italic">Coming soon...</li>}
+                      </ul>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
