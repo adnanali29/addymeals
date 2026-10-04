@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Trash2 } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
 import { Order } from '@/lib/supabase/types';
 
 export const OrdersView = () => {
@@ -15,42 +14,52 @@ export const OrdersView = () => {
 
     const fetchOrders = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('orders')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (data) setOrders(data);
-        setLoading(false);
+        try {
+            const res = await fetch('/api/orders');
+            if (res.ok) {
+                const data = await res.json();
+                setOrders(data);
+            }
+        } catch (err) {
+            console.error("Fetch orders error:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const toggleStatus = async (id: string, currentStatus: string) => {
         const nextStatus = currentStatus === 'Pending' ? 'Paid' : currentStatus === 'Paid' ? 'Cancelled' : 'Pending';
-        const { error } = await supabase
-            .from('orders')
-            .update({ status: nextStatus as any })
-            .eq('id', id);
-
-        if (error) {
-            console.error("Update order status error:", error);
-            alert("Failed to update status: " + error.message);
-        } else {
-            fetchOrders();
+        try {
+            const res = await fetch(`/api/orders/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: nextStatus })
+            });
+            if (res.ok) {
+                fetchOrders();
+            } else {
+                const err = await res.json();
+                alert("Failed to update status: " + (err.error || 'Server error'));
+            }
+        } catch (err) {
+            console.error("Update order status error:", err);
+            alert("Failed to update status");
         }
     };
 
     const handleDeleteOrder = async (id: string) => {
         if (confirm('Are you sure you want to delete this order?')) {
-            const { error } = await supabase
-                .from('orders')
-                .delete()
-                .eq('id', id);
-
-            if (error) {
-                console.error("Delete order error:", error);
-                alert("Failed to delete order: " + error.message);
-            } else {
-                fetchOrders();
+            try {
+                const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    fetchOrders();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to delete order: " + (err.error || 'Server error'));
+                }
+            } catch (err) {
+                console.error("Delete order error:", err);
+                alert("Failed to delete order");
             }
         }
     };

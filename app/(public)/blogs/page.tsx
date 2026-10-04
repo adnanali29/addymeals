@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Clock, Zap, XCircle } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
 import { Blog } from '@/lib/supabase/types';
 
 export default function BlogsPage() {
@@ -12,14 +11,17 @@ export default function BlogsPage() {
 
     useEffect(() => {
         const fetchBlogs = async () => {
-            const { data } = await supabase
-                .from('blogs')
-                .select('*')
-                .eq('published', true)
-                .order('created_at', { ascending: false });
-
-            if (data) setBlogs(data);
-            setLoading(false);
+            try {
+                const res = await fetch('/api/blogs');
+                if (res.ok) {
+                    const data: Blog[] = await res.json();
+                    setBlogs(data.filter(b => b.published));
+                }
+            } catch (err) {
+                console.error("Fetch blogs error:", err);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchBlogs();
     }, []);

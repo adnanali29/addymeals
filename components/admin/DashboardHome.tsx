@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { IndianRupee, ShoppingBag, Lightbulb, TrendingUp } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
+
 
 export const DashboardHome = () => {
     const [stats, setStats] = useState({
@@ -15,15 +15,16 @@ export const DashboardHome = () => {
     useEffect(() => {
         const fetchStats = async () => {
             setLoading(true);
-            const { data: orders } = await supabase.from('orders').select('items, total_amount, status');
+            const res = await fetch('/api/dashboard');
+            const orders = res.ok ? await res.json() : null;
 
             if (orders) {
-                const total = orders.reduce((acc, o) => acc + Number(o.total_amount), 0);
-                const active = orders.filter(o => o.status === 'Pending').length;
+                const total = orders.reduce((acc: number, o: any) => acc + Number(o.total_amount), 0);
+                const active = orders.filter((o: any) => o.status === 'Pending').length;
 
                 // Calculate best sellers from JSON items
                 const itemCounts: Record<string, number> = {};
-                orders.forEach(o => {
+                orders.forEach((o: any) => {
                     const items = o.items as any[];
                     if (Array.isArray(items)) {
                         items.forEach(item => {

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, X, Trash2, Mail, Phone, Calendar } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
 import { Message } from '@/lib/supabase/types';
 
 export const MessagesView = () => {
@@ -16,31 +15,44 @@ export const MessagesView = () => {
 
     const fetchMessages = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (data) setMessages(data);
-        setLoading(false);
+        try {
+            const res = await fetch('/api/messages');
+            if (res.ok) {
+                const data = await res.json();
+                setMessages(data);
+            }
+        } catch (err) {
+            console.error("Fetch messages error:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const deleteMessage = async (id: string) => {
         if (confirm('Archive this message?')) {
-            const { error } = await supabase.from('messages').delete().eq('id', id);
-            if (!error) {
-                fetchMessages();
-                setSelectedMessage(null);
+            try {
+                const res = await fetch(`/api/messages/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    fetchMessages();
+                    setSelectedMessage(null);
+                }
+            } catch (err) {
+                console.error("Delete message error:", err);
             }
         }
     };
 
     const updateStatus = async (id: string, isRead: boolean) => {
-        const { error } = await supabase
-            .from('messages')
-            .update({ status: isRead ? 'Read' : 'New' })
-            .eq('id', id);
-        if (!error) fetchMessages();
+        try {
+            const res = await fetch(`/api/messages/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: isRead ? 'Read' : 'New' })
+            });
+            if (res.ok) fetchMessages();
+        } catch (err) {
+            console.error("Update message status error:", err);
+        }
     };
 
     return (

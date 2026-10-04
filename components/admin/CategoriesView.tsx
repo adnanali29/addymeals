@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, X } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
 import { Category, CategoryItem } from '@/lib/supabase/types';
 
 interface ExtendedCategory extends Category {
@@ -21,77 +20,94 @@ export const CategoriesView = () => {
 
     const fetchCategories = async () => {
         setLoading(true);
-        const { data: catData, error: catError } = await supabase
-            .from('categories')
-            .select('*')
-            .order('display_order', { ascending: true });
-
-        if (catData) {
-            const { data: itemData } = await supabase
-                .from('category_items')
-                .select('*')
-                .order('display_order', { ascending: true });
-
-            const combined = catData.map(cat => ({
-                ...cat,
-                items: itemData?.filter(item => item.category_id === cat.id) || []
-            }));
-            setCategories(combined);
+        try {
+            const res = await fetch('/api/categories');
+            if (res.ok) {
+                const data = await res.json();
+                setCategories(data);
+            }
+        } catch (err) {
+            console.error("Fetch categories error:", err);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleAddCategory = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newCatName || !newCatEmoji) return;
 
-        const { error } = await supabase
-            .from('categories')
-            .insert([{ name: newCatName, emoji: newCatEmoji }]);
+        try {
+            const res = await fetch('/api/categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newCatName, emoji: newCatEmoji })
+            });
 
-        if (error) {
-            console.error("Add category error:", error);
-            alert("Failed to add category: " + error.message);
-        } else {
-            setNewCatName("");
-            setNewCatEmoji("");
-            fetchCategories();
+            if (res.ok) {
+                setNewCatName("");
+                setNewCatEmoji("");
+                fetchCategories();
+            } else {
+                const err = await res.json();
+                alert("Failed to add category: " + (err.error || 'Server error'));
+            }
+        } catch (err: any) {
+            console.error("Add category error:", err);
+            alert("Failed to add category");
         }
     };
 
     const handleDeleteCategory = async (id: string) => {
         if (confirm('Are you sure? This will delete all items in this category.')) {
-            const { error } = await supabase.from('categories').delete().eq('id', id);
-            if (error) {
-                console.error("Delete category error:", error);
-                alert("Failed to delete category: " + error.message);
-            } else {
-                fetchCategories();
+            try {
+                const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    fetchCategories();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to delete category: " + (err.error || 'Server error'));
+                }
+            } catch (err) {
+                console.error("Delete category error:", err);
+                alert("Failed to delete category");
             }
         }
     };
 
     const handleAddItem = async (catId: string, itemName: string) => {
         if (!itemName) return;
-        const { error } = await supabase
-            .from('category_items')
-            .insert([{ category_id: catId, item_name: itemName }]);
+        try {
+            const res = await fetch('/api/category-items', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category_id: catId, item_name: itemName })
+            });
 
-        if (error) {
-            console.error("Add item error:", error);
-            alert("Failed to add item: " + error.message);
-        } else {
-            fetchCategories();
+            if (res.ok) {
+                fetchCategories();
+            } else {
+                const err = await res.json();
+                alert("Failed to add item: " + (err.error || 'Server error'));
+            }
+        } catch (err) {
+            console.error("Add item error:", err);
+            alert("Failed to add item");
         }
     };
 
     const handleDeleteItem = async (itemId: string) => {
-        const { error } = await supabase.from('category_items').delete().eq('id', itemId);
-        if (error) {
-            console.error("Delete item error:", error);
-            alert("Failed to delete item: " + error.message);
-        } else {
-            fetchCategories();
+        try {
+            const res = await fetch(`/api/category-items/${itemId}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchCategories();
+            } else {
+                const err = await res.json();
+                alert("Failed to delete item: " + (err.error || 'Server error'));
+            }
+        } catch (err) {
+            console.error("Delete item error:", err);
+            alert("Failed to delete item");
         }
     };
 

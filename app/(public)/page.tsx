@@ -6,7 +6,6 @@ import { useStore } from '@/lib/store';
 import { WHY_ADDY_FEATURES, TESTIMONIALS } from '@/lib/constants';
 import { CheckCircle2, Star, MapPin, ArrowRight } from '@/components/ui/icons';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { Category, CategoryItem } from '@/lib/supabase/types';
 
 interface ExtendedCategory extends Category {
@@ -21,24 +20,17 @@ export default function HomePage() {
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const { data: catData } = await supabase
-        .from('categories')
-        .select('*')
-        .order('display_order', { ascending: true });
-
-      if (catData) {
-        const { data: itemData } = await supabase
-          .from('category_items')
-          .select('*')
-          .order('display_order', { ascending: true });
-
-        const combined = catData.map(cat => ({
-          ...cat,
-          items: itemData?.filter(item => item.category_id === cat.id) || []
-        }));
-        setCategories(combined);
+      try {
+        const res = await fetch('/api/categories');
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchCategories();
   }, []);
@@ -55,19 +47,19 @@ export default function HomePage() {
 
   return (
     <div className="space-y-12 animate-fade-in relative z-10">
-      <section className="relative pt-6 px-4">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 items-center">
-          <div className="text-center md:text-left z-10">
+      <section className="relative pt-6 md:pt-12 px-4">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="text-center md:text-left z-10 flex flex-col items-center md:items-start">
             <div className="inline-block bg-orange-100 text-orange-700 px-4 py-1 rounded-full text-sm font-bold mb-4 shadow-sm">#1 Nutrition-First Food Platform</div>
             <h1 className="text-5xl md:text-7xl font-black text-gray-900 leading-tight mb-6">Desi Soul, <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600 filter drop-shadow-sm">Healthy Goal.</span></h1>
             <p className="text-xl text-gray-600 mb-8 max-w-lg mx-auto md:mx-0 leading-relaxed font-medium">We combine familiar Indian flavors with modern nutrition principles to make everyday eating better and easier.<br /><span className="text-sm text-orange-500 font-bold mt-2 block tracking-wide">(Hover over the stove to start cooking!)</span></p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start w-full sm:w-auto">
               <button onClick={handleViewMenu} className="px-8 py-4 bg-orange-600 text-white rounded-full font-bold shadow-lg hover:bg-orange-700 hover:shadow-orange-300 hover:shadow-xl transition-all transform hover:-translate-y-1">View Menu</button>
               <button onClick={handleOurStory} className="hidden lg:block px-8 py-4 bg-white text-orange-600 border-2 border-orange-100 rounded-full font-bold shadow-sm hover:bg-orange-50 transition-colors">Our Story</button>
               <button onClick={() => setIsOrderModalOpen(true)} className="lg:hidden px-8 py-4 bg-white text-orange-600 border-2 border-orange-100 rounded-full font-bold shadow-sm hover:bg-orange-50 transition-colors">Order Now</button>
             </div>
           </div>
-          <div className="flex justify-center items-center mt-10 md:mt-0 relative z-10 py-6 md:pt-20">
+          <div className="flex justify-center items-center relative z-10 py-6">
             <div className="bg-white/40 backdrop-blur-sm p-8 rounded-full shadow-[0_0_40px_rgba(255,255,255,0.6)]">
               <MagicStove />
             </div>

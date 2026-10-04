@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, X, Clock, Zap } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
 import { Blog } from '@/lib/supabase/types';
 
 export const BlogsView = () => {
@@ -17,24 +16,16 @@ export const BlogsView = () => {
 
     const fetchBlogs = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('blogs')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (data) setBlogs(data);
+        const res = await fetch('/api/blogs');
+        if (res.ok) setBlogs(await res.json());
         setLoading(false);
     };
 
     const handleDelete = async (id: string) => {
         if (confirm('Are you sure you want to delete this blog post?')) {
-            const { error } = await supabase.from('blogs').delete().eq('id', id);
-            if (error) {
-                console.error("Delete blog error:", error);
-                alert("Failed to delete blog: " + error.message);
-            } else {
-                fetchBlogs();
-            }
+            const res = await fetch(`/api/blogs/${id}`, { method: 'DELETE' });
+            if (!res.ok) alert('Failed to delete blog');
+            else fetchBlogs();
         }
     };
 
@@ -53,29 +44,17 @@ export const BlogsView = () => {
         };
 
         if (editingBlog) {
-            const { error } = await supabase
-                .from('blogs')
-                .update(blogData)
-                .eq('id', editingBlog.id);
-            if (error) {
-                console.error("Update blog error:", error);
-                alert("Failed to update blog: " + error.message);
-            } else {
-                setIsModalOpen(false);
-                setEditingBlog(null);
-                fetchBlogs();
-            }
+            const res = await fetch(`/api/blogs/${editingBlog.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(blogData)
+            });
+            if (!res.ok) alert('Failed to update blog');
+            else { setIsModalOpen(false); setEditingBlog(null); fetchBlogs(); }
         } else {
-            const { error } = await supabase
-                .from('blogs')
-                .insert([blogData]);
-            if (error) {
-                console.error("Insert blog error:", error);
-                alert("Failed to add blog: " + error.message);
-            } else {
-                setIsModalOpen(false);
-                fetchBlogs();
-            }
+            const res = await fetch('/api/blogs', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(blogData)
+            });
+            if (!res.ok) alert('Failed to add blog');
+            else { setIsModalOpen(false); fetchBlogs(); }
         }
     };
 

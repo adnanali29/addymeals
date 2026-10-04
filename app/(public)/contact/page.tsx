@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react';
 import { Phone, Mail, MapPin } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
-
 export default function ContactPage() {
     const [sending, setSending] = useState(false);
     const [sent, setSent] = useState(false);
@@ -22,18 +20,25 @@ export default function ContactPage() {
             message: formData.get('message') as string,
         };
 
-        const { error } = await supabase
-            .from('messages')
-            .insert([contactData]);
+        try {
+            const res = await fetch('/api/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(contactData)
+            });
 
-        if (!error) {
-            setSent(true);
-            form.reset();
-            setTimeout(() => setSent(false), 5000);
-        } else {
+            if (res.ok) {
+                setSent(true);
+                form.reset();
+                setTimeout(() => setSent(false), 5000);
+            } else {
+                alert("Oops! Something went wrong. Please try again or WhatsApp us directly.");
+            }
+        } catch (err) {
             alert("Oops! Something went wrong. Please try again or WhatsApp us directly.");
+        } finally {
+            setSending(false);
         }
-        setSending(false);
     };
 
     return (

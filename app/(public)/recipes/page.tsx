@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { Flame, Download } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
 import { Recipe } from '@/lib/supabase/types';
 
 export default function RecipesPage() {
@@ -11,14 +10,17 @@ export default function RecipesPage() {
 
     useEffect(() => {
         const fetchRecipes = async () => {
-            const { data } = await supabase
-                .from('recipes')
-                .select('*')
-                .eq('status', 'Active')
-                .order('created_at', { ascending: false });
-
-            if (data) setRecipes(data);
-            setLoading(false);
+            try {
+                const res = await fetch('/api/recipes');
+                if (res.ok) {
+                    const data: Recipe[] = await res.json();
+                    setRecipes(data.filter(r => r.status === 'Active'));
+                }
+            } catch (err) {
+                console.error('Fetch recipes error:', err);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchRecipes();
     }, []);

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Settings, Trash2, ChefHat, X, UploadCloud, ImageIcon } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
 import { Recipe } from '@/lib/supabase/types';
 
 export const RecipesView = () => {
@@ -17,24 +16,16 @@ export const RecipesView = () => {
 
     const fetchRecipes = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('recipes')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (data) setRecipes(data);
+        const res = await fetch('/api/recipes');
+        if (res.ok) setRecipes(await res.json());
         setLoading(false);
     };
 
     const handleDelete = async (id: string) => {
         if (confirm('Are you sure you want to delete this recipe?')) {
-            const { error } = await supabase.from('recipes').delete().eq('id', id);
-            if (error) {
-                console.error("Delete error:", error);
-                alert("Failed to delete recipe: " + error.message);
-            } else {
-                fetchRecipes();
-            }
+            const res = await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
+            if (!res.ok) alert('Failed to delete recipe');
+            else fetchRecipes();
         }
     };
 
@@ -50,29 +41,17 @@ export const RecipesView = () => {
         };
 
         if (editingRecipe) {
-            const { error } = await supabase
-                .from('recipes')
-                .update(recipeData)
-                .eq('id', editingRecipe.id);
-            if (error) {
-                console.error("Update error:", error);
-                alert("Failed to update recipe: " + error.message);
-            } else {
-                setIsModalOpen(false);
-                setEditingRecipe(null);
-                fetchRecipes();
-            }
+            const res = await fetch(`/api/recipes/${editingRecipe.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(recipeData)
+            });
+            if (!res.ok) alert('Failed to update recipe');
+            else { setIsModalOpen(false); setEditingRecipe(null); fetchRecipes(); }
         } else {
-            const { error } = await supabase
-                .from('recipes')
-                .insert([recipeData]);
-            if (error) {
-                console.error("Insert error:", error);
-                alert("Failed to add recipe: " + error.message);
-            } else {
-                setIsModalOpen(false);
-                fetchRecipes();
-            }
+            const res = await fetch('/api/recipes', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(recipeData)
+            });
+            if (!res.ok) alert('Failed to add recipe');
+            else { setIsModalOpen(false); fetchRecipes(); }
         }
     };
 

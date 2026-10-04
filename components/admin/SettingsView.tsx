@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, IndianRupee, Save, Zap } from '@/components/ui/icons';
-import { supabase } from '@/lib/supabase/client';
 import { InstantMenuItem } from '@/lib/supabase/types';
 
 export const SettingsView = () => {
@@ -16,48 +15,70 @@ export const SettingsView = () => {
 
     const fetchMenuItems = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('instant_menu')
-            .select('*')
-            .order('display_order', { ascending: true });
-        if (data) setMenuItems(data);
-        setLoading(false);
+        try {
+            const res = await fetch('/api/instant-menu');
+            if (res.ok) {
+                const data = await res.json();
+                setMenuItems(data);
+            }
+        } catch (err) {
+            console.error("Fetch instant menu error:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newMenuItem.name || !newMenuItem.price) return;
 
-        const { error } = await supabase
-            .from('instant_menu')
-            .insert([{
-                name: newMenuItem.name,
-                price: parseFloat(newMenuItem.price),
-                note: newMenuItem.note,
-                available: true
-            }]);
+        try {
+            const res = await fetch('/api/instant-menu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newMenuItem.name,
+                    price: parseFloat(newMenuItem.price),
+                    note: newMenuItem.note,
+                    available: true
+                })
+            });
 
-        if (error) {
-            alert("Error adding menu item: " + error.message);
-        } else {
-            setNewMenuItem({ name: '', price: '', note: '' });
-            fetchMenuItems();
+            if (res.ok) {
+                setNewMenuItem({ name: '', price: '', note: '' });
+                fetchMenuItems();
+            } else {
+                const err = await res.json();
+                alert("Error adding menu item: " + (err.error || 'Server error'));
+            }
+        } catch (err) {
+            console.error("Add menu item error:", err);
+            alert("Error adding menu item");
         }
     };
 
     const handleDelete = async (id: string) => {
         if (confirm('Delete this menu item?')) {
-            const { error } = await supabase.from('instant_menu').delete().eq('id', id);
-            if (!error) fetchMenuItems();
+            try {
+                const res = await fetch(`/api/instant-menu/${id}`, { method: 'DELETE' });
+                if (res.ok) fetchMenuItems();
+            } catch (err) {
+                console.error("Delete menu item error:", err);
+            }
         }
     };
 
     const toggleAvailability = async (id: string, current: boolean) => {
-        const { error } = await supabase
-            .from('instant_menu')
-            .update({ available: !current })
-            .eq('id', id);
-        if (!error) fetchMenuItems();
+        try {
+            const res = await fetch(`/api/instant-menu/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ available: !current })
+            });
+            if (res.ok) fetchMenuItems();
+        } catch (err) {
+            console.error("Toggle availability error:", err);
+        }
     };
 
     return (

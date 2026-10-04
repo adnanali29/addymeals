@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, X, Phone, Minus, Plus } from '../ui/icons';
 import { useStore } from '@/lib/store';
-import { supabase } from '@/lib/supabase/client';
 import { InstantMenuItem } from '@/lib/supabase/types';
 
 export const OrderModal = () => {
@@ -25,13 +24,17 @@ export const OrderModal = () => {
 
     const fetchMenu = async () => {
         setLoading(true);
-        const { data } = await supabase
-            .from('instant_menu')
-            .select('*')
-            .eq('available', true)
-            .order('display_order', { ascending: true });
-        if (data) setMenuItems(data);
-        setLoading(false);
+        try {
+            const res = await fetch('/api/instant-menu');
+            if (res.ok) {
+                const data: InstantMenuItem[] = await res.json();
+                setMenuItems(data.filter(item => item.available));
+            }
+        } catch (err) {
+            console.error("Fetch menu error:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,22 +66,26 @@ export const OrderModal = () => {
             qty: cart[item.id]
         }));
 
-        // 1. Save to Supabase (Combined name and address for existing schema)
-        const { data: orderData, error } = await supabase
-            .from('orders')
-            .insert([{
-                customer_name: `${userDetails.name} | Pickup`,
-                customer_phone: userDetails.phone,
-                customer_email: userDetails.email,
-                items: itemSummaries,
-                total_amount: total,
-                status: 'Pending'
-            }])
-            .select()
-            .single();
-
-        if (error) {
-            console.error("Order save error:", error);
+        // 1. Save to NeonDB via API
+        let orderData: any = null;
+        try {
+            const res = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    customer_name: `${userDetails.name} | Pickup`,
+                    customer_phone: userDetails.phone,
+                    customer_email: userDetails.email,
+                    items: itemSummaries,
+                    total_amount: total,
+                    status: 'Pending'
+                })
+            });
+            if (res.ok) {
+                orderData = await res.json();
+            }
+        } catch (err) {
+            console.error("Order save error:", err);
         }
 
         const orderId = orderData?.id?.slice(0, 6).toUpperCase() || 'NEW';
